@@ -1,0 +1,6 @@
+{
+  mode: "client",
+  connect: {
+    endpoints: ["tcp/IP_PUBLIK_VPS_ANDA:7447"],
+  },
+}

@@ -1,0 +1,346 @@
+<?xml version="1.0"?>
+
+<robot name="swarm_robot">
+
+  <!-- ========================= -->
+  <!-- BASE LINK -->
+  <!-- ========================= -->
+
+  <link name="base_link">
+
+    <visual>
+      <origin xyz="0 0 0.40"/>
+      <geometry>
+        <mesh filename="file:///home/selvia/robot_ws/src/swarm_robot/meshes/body_black.obj"
+              scale="10 10 10"/>
+      </geometry>
+    </visual>
+  
+    <collision>
+      <origin xyz="0 0 0.05"/>
+      <geometry>
+        <box size="0.60 0.50 0.08"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="1.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia
+        ixx="0.1"
+        ixy="0"
+        ixz="0"
+        iyy="0.1"
+        iyz="0"
+        izz="0.1"/>
+    </inertial>
+
+  </link>
+
+  <!-- ========================= -->
+  <!-- LEFT WHEEL -->
+  <!-- ========================= -->
+
+  <link name="left_wheel">
+
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5708 1.5708 3.1416"/>
+      <geometry>
+        <mesh filename="file:///home/selvia/robot_ws/src/swarm_robot/meshes/kiri_depan.obj"
+              scale="10 10 10"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry>
+        <cylinder radius="0.20" length="0.05"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0"/>
+      <inertia
+        ixx="0.01"
+        ixy="0"
+        ixz="0"
+        iyy="0.01"
+        iyz="0"
+        izz="0.01"/>
+    </inertial>
+
+  </link>
+
+  <!-- LEFT JOINT -->
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0.23 0.42 0.20"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- ========================= -->
+  <!-- RIGHT WHEEL -->
+  <!-- ========================= -->
+
+  <link name="right_wheel">
+
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="file:///home/selvia/robot_ws/src/swarm_robot/meshes/kanan_depan.obj"
+              scale="10 10 10"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry>
+        <cylinder radius="0.20" length="0.05"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0"/>
+      <inertia
+        ixx="0.01"
+        ixy="0"
+        ixz="0"
+        iyy="0.01"
+        iyz="0"
+        izz="0.01"/>
+    </inertial>
+
+  </link>
+
+  <!-- RIGHT JOINT -->
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0.23 -0.42 0.20"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- ========================= -->
+  <!-- IMU LINK -->
+  <!-- ========================= -->
+
+  <link name="imu_link">
+
+    <visual>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="0.01"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0"
+               iyy="0.0001" iyz="0"
+               izz="0.0001"/>
+    </inertial>
+
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ========================= -->
+  <!-- ARUCO BACKGROUND (PUTIH) -->
+  <!-- ========================= -->
+
+  <link name="aruco_bg_link">
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.65 0.65 0.01"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="0.65 0.65 0.01"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0"/>
+      <inertia
+        ixx="0.00001"
+        ixy="0"
+        ixz="0"
+        iyy="0.00001"
+        iyz="0"
+        izz="0.00001"/>
+    </inertial>
+
+  </link>
+
+  <joint name="aruco_bg_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="aruco_bg_link"/>
+    <!-- x digeser dari 0.10 -> 0.23 supaya PERSIS sejajar dengan garis poros
+         roda (lihat left/right_wheel_joint, x=0.23) yaitu titik pusat putar
+         robot yang sebenarnya. Sebelumnya marker geser 13cm dari titik putar,
+         sehingga saat robot berputar di tempat, marker ikut "berputar
+         mengelilingi" titik pusat asli dan kamera salah membaca itu sebagai
+         robot berpindah tempat. -->
+    <origin xyz="0.23 0 0.80" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ========================= -->
+  <!-- ARUCO MARKER LINK -->
+  <!-- ========================= -->
+
+  <link name="aruco_link">
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.45 0.45 0.02"/>
+      </geometry>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="0.45 0.45 0.02"/>
+      </geometry>
+    </collision>
+
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0"/>
+      <inertia
+        ixx="0.00001"
+        ixy="0"
+        ixz="0"
+        iyy="0.00001"
+        iyz="0"
+        izz="0.00001"/>
+    </inertial>
+
+  </link>
+
+  <joint name="aruco_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="aruco_link"/>
+    <!-- x digeser dari 0.10 -> 0.23, alasan sama seperti aruco_bg_joint di atas -->
+    <origin xyz="0.23 0 0.81" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ========================= -->
+  <!-- GAZEBO PLUGINS -->
+  <!-- ========================= -->
+
+  <gazebo>
+    
+    <plugin
+      filename="gz-sim-diff-drive-system"
+      name="gz::sim::systems::DiffDrive">
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.84</wheel_separation>
+      <wheel_radius>0.10</wheel_radius>
+      <topic>/cmd_vel</topic>
+    </plugin>
+
+    <plugin
+      filename="gz-sim-imu-system"
+      name="gz::sim::systems::Imu">
+    </plugin>
+
+  </gazebo>
+
+  <gazebo reference="base_link">
+    <gravity>true</gravity>
+  </gazebo>
+
+  <gazebo reference="left_wheel">
+    <mu1>100.0</mu1>
+    <mu2>100.0</mu2>
+    <gravity>true</gravity>
+  </gazebo>
+
+  <gazebo reference="right_wheel">
+    <mu1>100.0</mu1>
+    <mu2>100.0</mu2>
+    <gravity>true</gravity>
+  </gazebo>
+
+  <!-- ARUCO BACKGROUND PUTIH -->
+  <gazebo reference="aruco_bg_link">
+    <visual>
+      <material>
+        <ambient>1 1 1 1</ambient>
+        <diffuse>1 1 1 1</diffuse>
+        <specular>0.1 0.1 0.1 1</specular>
+      </material>
+    </visual>
+    <gravity>true</gravity>
+  </gazebo>
+
+  <!-- ARUCO MARKER TEKSTUR -->
+  <gazebo reference="aruco_link">
+    <visual>
+      <material>
+        <ambient>1 1 1 1</ambient>
+        <diffuse>1 1 1 1</diffuse>
+        <specular>0 0 0 1</specular>
+        <pbr>
+          <metal>
+            <albedo_map>file:///home/selvia/robot_ws/src/swarm_robot/meshes/aruco/aruco0.png</albedo_map>
+          <metalness>0.0</metalness>
+          <roughness>1.0</roughness>
+          </metal>
+        </pbr>
+      </material>
+    </visual>
+    <gravity>true</gravity>
+  </gazebo>
+
+  <!-- IMU SENSOR GAZEBO -->
+  <gazebo reference="imu_link">
+
+    <sensor name="imu_sensor" type="imu">
+
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>true</visualize>
+      <topic>/imu</topic>
+      <gz_frame_id>imu_link</gz_frame_id>
+
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.001</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.001</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.001</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+
+    </sensor>
+
+  </gazebo>
+
+</robot>

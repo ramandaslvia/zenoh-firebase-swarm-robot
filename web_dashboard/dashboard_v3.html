@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swarm Robot — Ground Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #070c10;
+    --panel: #0d151b;
+    --panel-2: #101c24;
+    --line: #1c2c33;
+    --phosphor: #4ee6b8;
+    --phosphor-dim: #1f5a4c;
+    --amber: #ffb454;
+    --danger: #ff5d5d;
+    --text: #dfeaec;
+    --text-dim: #7f9aa1;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html, body{height:100%; overflow:hidden;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #0d2621 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    display:flex; flex-direction:column;
+    padding:14px 18px;
+  }
+  .scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+  header{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:12px;
+    flex-wrap:wrap; gap:6px; flex-shrink:0;
+  }
+  header h1{
+    font-family:var(--mono); font-weight:700; font-size:19px; letter-spacing:0.5px;
+  }
+  header h1 span{color:var(--phosphor);}
+  .status-line{
+    font-family:var(--mono); font-size:11px; color:var(--text-dim);
+    display:flex; align-items:center; gap:8px;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--text-dim); display:inline-block;}
+  .dot.live{background:var(--phosphor); box-shadow:0 0 8px var(--phosphor); animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap:14px;
+    flex:1;
+    min-height:0;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  .panel-head{
+    font-family:var(--mono); font-size:10px; letter-spacing:1.3px; text-transform:uppercase;
+    color:var(--text-dim); padding:7px 12px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
+  }
+  .panel-body{padding:10px; min-height:0; flex:1; display:flex; flex-direction:column;}
+
+  .stack{display:flex; flex-direction:column; gap:12px; min-height:0;}
+  .stack > .panel{flex:1; min-height:0;}
+
+  #arena-wrap{position:relative; width:100%; height:100%; background:#081014; display:flex; align-items:center; justify-content:center;}
+  #arena{width:100%; height:100%; display:block;}
+
+  #camera-wrap{position:relative; width:100%; height:100%; background:#000; display:flex; align-items:center; justify-content:center;}
+  #camera-img{width:100%; height:100%; object-fit:contain; display:none;}
+  #camera-placeholder{font-family:var(--mono); font-size:11px; color:var(--text-dim); text-align:center; padding:10px;}
+  #camera-time{position:absolute; bottom:5px; right:8px; font-family:var(--mono); font-size:9px; color:var(--phosphor); background:rgba(0,0,0,0.5); padding:2px 5px; border-radius:2px;}
+
+  .telemetry-row{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--line); font-family:var(--mono); font-size:12px;}
+  .telemetry-row:last-child{border-bottom:none;}
+  .telemetry-row .k{color:var(--text-dim);}
+  .telemetry-row .v{color:var(--phosphor); font-weight:500;}
+
+  .status-badge{
+    font-family:var(--mono); font-size:11px; padding:7px 10px; border-radius:3px;
+    background:var(--panel-2); border:1px solid var(--line); text-align:center;
+    letter-spacing:0.5px;
+  }
+  .status-badge.ok{color:var(--phosphor); border-color:var(--phosphor-dim);}
+  .status-badge.warn{color:var(--amber);}
+
+  .mode-switch{display:flex; gap:6px; margin-bottom:8px;}
+  .mode-btn{
+    flex:1; font-family:var(--mono); font-size:10px; letter-spacing:0.5px;
+    padding:6px; border-radius:3px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text-dim); cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .mode-btn.active{background:rgba(78,230,184,0.12); border-color:var(--phosphor); color:var(--phosphor);}
+
+  .controls{display:flex; flex-direction:column; gap:8px;}
+  button.cmd{
+    font-family:var(--sans); font-weight:600; font-size:13px;
+    padding:11px 14px; border-radius:3px; border:1px solid var(--line);
+    cursor:pointer; background:var(--panel-2); color:var(--text);
+    transition:all 0.15s ease; letter-spacing:0.3px;
+  }
+  button.cmd:hover:not(:disabled){transform:translateY(-1px);}
+  button.cmd:active:not(:disabled){transform:translateY(0);}
+  button.cmd:disabled{opacity:0.35; cursor:not-allowed;}
+  button.cmd.calibrate{border-color:var(--amber); color:var(--amber);}
+  button.cmd.calibrate:hover:not(:disabled){background:rgba(255,180,84,0.08);}
+  button.cmd.calibrate.on{background:var(--amber); color:#1a1206; box-shadow:0 0 12px rgba(255,180,84,0.4);}
+  button.cmd.start{border-color:var(--phosphor); color:var(--phosphor);}
+  button.cmd.start:hover:not(:disabled){background:rgba(78,230,184,0.08);}
+  button.cmd.start.on{background:var(--phosphor); color:#04211a; box-shadow:0 0 12px rgba(78,230,184,0.4);}
+  button.cmd.stop{border-color:var(--danger); color:var(--danger);}
+  button.cmd.stop:hover:not(:disabled){background:rgba(255,93,93,0.08);}
+  button.cmd.stop.on{background:var(--danger); color:#2a0606; box-shadow:0 0 12px rgba(255,93,93,0.4);}
+
+  .dpad{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    grid-template-rows:repeat(3, 1fr);
+    gap:6px;
+    aspect-ratio:1;
+    max-width:170px;
+    margin:4px auto 0;
+  }
+  .dpad button{
+    font-family:var(--mono); font-size:16px; border-radius:4px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--text);
+    cursor:pointer; transition:all 0.1s ease;
+  }
+  .dpad button:hover:not(:disabled){background:rgba(78,230,184,0.1); border-color:var(--phosphor);}
+  .dpad button:active:not(:disabled){background:var(--phosphor); color:#04211a;}
+  .dpad button:disabled{opacity:0.25; cursor:not-allowed;}
+  .dpad .up{grid-column:2; grid-row:1;}
+  .dpad .left{grid-column:1; grid-row:2;}
+  .dpad .stop-mid{grid-column:2; grid-row:2; color:var(--danger); border-color:var(--danger);}
+  .dpad .right{grid-column:3; grid-row:2;}
+  .dpad .down{grid-column:2; grid-row:3;}
+
+  .log{
+    font-family:var(--mono); font-size:10px; color:var(--text-dim);
+    overflow-y:auto; display:flex; flex-direction:column-reverse; flex:1;
+  }
+  .log div{padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.03);}
+  .log div span{color:var(--phosphor);}
+
+  #celebration{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    z-index:200; pointer-events:none;
+  }
+  #celebration.show{display:flex;}
+  #celebration .card{
+    font-family:var(--mono); background:rgba(7,12,16,0.92); border:2px solid var(--phosphor);
+    color:var(--phosphor); padding:24px 40px; border-radius:8px; text-align:center;
+    box-shadow:0 0 40px rgba(78,230,184,0.5); font-size:20px; font-weight:700; letter-spacing:1px;
+    animation:pop 0.4s ease;
+  }
+  @keyframes pop{0%{transform:scale(0.7); opacity:0;} 100%{transform:scale(1); opacity:1;}}
+  .confetti-piece{
+    position:fixed; top:-20px; width:8px; height:14px; opacity:0.9;
+    animation:fall linear forwards; z-index:199;
+  }
+  @keyframes fall{to{transform:translateY(105vh) rotate(540deg);}}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="celebration"><div class="card">🎉 TARGET TERCAPAI! MISI SELESAI 🎉</div></div>
+
+<header>
+  <h1>SWARM_ROBOT <span>// GROUND CONTROL</span></h1>
+  <div class="status-line"><span class="dot" id="conn-dot"></span><span id="conn-text">Menghubungkan ke Firestore...</span></div>
+</header>
+
+<div class="grid">
+  <div class="stack">
+    <div class="panel">
+      <div class="panel-head"><span>ARENA — LINTASAN LEADER</span><span id="arena-count">0 titik</span></div>
+      <div class="panel-body" style="padding:0;">
+        <div id="arena-wrap"><canvas id="arena"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>OVERHEAD CAMERA</span></div>
+      <div class="panel-body" style="padding:0;">
+        <div id="camera-wrap">
+          <img id="camera-img" alt="Overhead camera">
+          <div id="camera-placeholder">Menunggu frame kamera pertama...</div>
+          <div id="camera-time" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="panel" style="flex:0 0 auto;">
+      <div class="panel-head"><span>TELEMETRI</span></div>
+      <div class="panel-body">
+        <div class="telemetry-row"><span class="k">Leader (x, y)</span><span class="v" id="t-leader">—</span></div>
+        <div class="telemetry-row"><span class="k">Theta</span><span class="v" id="t-theta">—</span></div>
+        <div class="telemetry-row"><span class="k">Target (x, y)</span><span class="v" id="t-target">—</span></div>
+        <div class="telemetry-row"><span class="k">Update terakhir</span><span class="v" id="t-updated">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="flex:0 0 auto;">
+      <div class="panel-head"><span>STATUS MISI</span></div>
+      <div class="panel-body">
+        <div class="status-badge ok" id="mission-status">MENUNGGU DATA...</div>
+      </div>
+    </div>
+
+    <div class="panel" style="flex:0 0 auto;">
+      <div class="panel-head"><span>KONTROL</span></div>
+      <div class="panel-body">
+        <div class="mode-switch">
+          <button class="mode-btn active" id="mode-auto-btn" onclick="setMode('auto')">⚙ OTOMATIS</button>
+          <button class="mode-btn" id="mode-manual-btn" onclick="setMode('manual')">🕹 MANUAL</button>
+        </div>
+
+        <div id="auto-controls" class="controls">
+          <button class="cmd calibrate" id="btn-calibrate" onclick="sendCommand('calibrate')">🔧 KALIBRASI</button>
+          <button class="cmd start" id="btn-start" onclick="sendCommand('start')">▶ START</button>
+          <button class="cmd stop" id="btn-stop" onclick="sendCommand('stop')">■ STOP</button>
+        </div>
+
+        <div id="manual-controls" class="controls" style="display:none;">
+          <div class="dpad">
+            <button class="up" onmousedown="sendCommand('move_forward')" onmouseup="sendCommand('move_stop')" ontouchstart="sendCommand('move_forward')" ontouchend="sendCommand('move_stop')">▲</button>
+            <button class="left" onmousedown="sendCommand('move_left')" onmouseup="sendCommand('move_stop')" ontouchstart="sendCommand('move_left')" ontouchend="sendCommand('move_stop')">◀</button>
+            <button class="stop-mid" onclick="sendCommand('move_stop')">■</button>
+            <button class="right" onmousedown="sendCommand('move_right')" onmouseup="sendCommand('move_stop')" ontouchstart="sendCommand('move_right')" ontouchend="sendCommand('move_stop')">▶</button>
+            <button class="down" onmousedown="sendCommand('move_backward')" onmouseup="sendCommand('move_stop')" ontouchstart="sendCommand('move_backward')" ontouchend="sendCommand('move_stop')">▼</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>LOG PERINTAH</span></div>
+      <div class="panel-body">
+        <div class="log" id="cmd-log"><div>Belum ada perintah dikirim.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, onSnapshot, addDoc,
+    query, orderBy, limit, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyARG6WriIacXLqb-tc3t64te4p5brwhlm4",
+    authDomain: "zenoh-swarm-robot.firebaseapp.com",
+    projectId: "zenoh-swarm-robot",
+    storageBucket: "zenoh-swarm-robot.firebasestorage.app",
+    messagingSenderId: "152599911415",
+    appId: "1:152599911415:web:99b3fb54543bdb264facf2"
+  };
+  const COLLECTION = "swarm_robot";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const connDot = document.getElementById('conn-dot');
+  const connText = document.getElementById('conn-text');
+  function markConnected(ok){
+    connDot.classList.toggle('live', ok);
+    connText.textContent = ok ? 'Terhubung ke Firestore (real-time)' : 'Menghubungkan ke Firestore...';
+  }
+
+  window.currentMode = 'auto';
+  window.setMode = function(mode){
+    window.currentMode = mode;
+    document.getElementById('mode-auto-btn').classList.toggle('active', mode === 'auto');
+    document.getElementById('mode-manual-btn').classList.toggle('active', mode === 'manual');
+    document.getElementById('auto-controls').style.display = mode === 'auto' ? 'flex' : 'none';
+    document.getElementById('manual-controls').style.display = mode === 'manual' ? 'block' : 'none';
+    updateButtonStates();
+  };
+
+  let leader = null, target = null;
+  let missionRunning = false;
+  let celebrated = false;
+
+  onSnapshot(doc(db, COLLECTION, 'aruco_leader_pose'), (snap) => {
+    markConnected(true);
+    if(!snap.exists()) return;
+    const d = snap.data();
+    leader = { x: d.x, y: d.y };
+    document.getElementById('t-leader').textContent = `${d.x.toFixed(1)}, ${d.y.toFixed(1)} cm`;
+    document.getElementById('t-theta').textContent = `${(d.theta*180/Math.PI).toFixed(1)}°`;
+    document.getElementById('t-updated').textContent = new Date(d._received_at).toLocaleTimeString('id-ID');
+  }, () => markConnected(false));
+
+  onSnapshot(doc(db, COLLECTION, 'aruco_target_pose'), (snap) => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    target = { x: d.x, y: d.y };
+    document.getElementById('t-target').textContent = `${d.x.toFixed(1)}, ${d.y.toFixed(1)} cm`;
+  });
+
+  onSnapshot(doc(db, COLLECTION, 'mission_status'), (snap) => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    const el = document.getElementById('mission-status');
+    el.textContent = d.data || '—';
+    const isTarget = d.data === 'TARGET_TERCAPAI';
+    el.className = 'status-badge ' + (isTarget ? 'ok' : 'warn');
+    if(isTarget && !celebrated){
+      celebrated = true;
+      celebrate();
+    }
+    if(d.data && d.data !== 'TARGET_TERCAPAI'){
+      celebrated = false;
+    }
+  });
+
+  onSnapshot(doc(db, COLLECTION, 'mission_start'), (snap) => {
+    if(!snap.exists()) return;
+    missionRunning = !!snap.data().data;
+    updateButtonStates();
+  });
+
+  const btnStart = document.getElementById('btn-start');
+  const btnStop = document.getElementById('btn-stop');
+
+  function updateButtonStates(){
+    btnStart.classList.toggle('on', missionRunning);
+    btnStop.classList.toggle('on', !missionRunning);
+    const manualButtons = document.querySelectorAll('#manual-controls button');
+    manualButtons.forEach(b => b.disabled = missionRunning);
+    let warn = document.getElementById('manual-warning');
+    if(missionRunning && window.currentMode === 'manual'){
+      if(!warn){
+        warn = document.createElement('div');
+        warn.id = 'manual-warning';
+        warn.style.cssText = 'font-family:JetBrains Mono, monospace;font-size:10px;color:#ffb454;margin-top:6px;text-align:center;';
+        warn.textContent = 'Misi otomatis sedang berjalan — STOP dulu untuk kontrol manual';
+        document.getElementById('manual-controls').appendChild(warn);
+      }
+    } else if(warn) {
+      warn.remove();
+    }
+  }
+
+  onSnapshot(doc(db, COLLECTION, 'camera_meta'), (snap) => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    const img = document.getElementById('camera-img');
+    const placeholder = document.getElementById('camera-placeholder');
+    const timeEl = document.getElementById('camera-time');
+    img.src = 'data:image/jpeg;base64,' + d.image_base64;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    timeEl.style.display = 'block';
+    timeEl.textContent = new Date(d.updated_at).toLocaleTimeString('id-ID');
+  });
+
+  const canvas = document.getElementById('arena');
+  const wrap = document.getElementById('arena-wrap');
+  let trail = [];
+
+  function resizeCanvas(){
+    // Arena fisik portrait (840cm vertikal x 440cm horizontal). Kalau kanvas
+    // dipaksa mengisi kotak panel apa adanya (yang bentuknya landscape di
+    // layout ini), gambarnya jadi "digepengkan" dan posisi kelihatan beda
+    // dari tampilan kamera OpenCV yang portrait asli. Jadi di sini kanvas
+    // di-render sesuai rasio arena yang sebenarnya (letterbox, center),
+    // bukan sekadar mengisi penuh kotak wrapper.
+    const availW = wrap.clientWidth, availH = wrap.clientHeight;
+    const targetRatio = ARENA_Y_SPAN / ARENA_X_SPAN; // lebar:tinggi arena asli
+    let w = availW, h = w / targetRatio;
+    if (h > availH) { h = availH; w = h * targetRatio; }
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.style.display = 'block';
+    canvas.style.margin = '0 auto';
+    drawArena();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // Arena fisik: sumbu X (0-840cm, dari ArUco ID=3) tampil VERTIKAL di layar
+  // (sinkron dengan kamera overhead simulasi yang portrait/tegak), sumbu Y
+  // (0-440cm) tampil HORIZONTAL. X=0 di bawah, X bertambah ke ATAS.
+  // (Disamakan persis dengan ukuran arena asli di world SDF: 840 x 440 cm)
+  const ARENA_X_SPAN = 840, ARENA_Y_SPAN = 440;
+
+  function toPx(x, y){
+    const pad = 16;
+    const w = canvas.width - pad*2, h = canvas.height - pad*2;
+    const px = pad + (y/ARENA_Y_SPAN)*w;
+    const py = pad + (1 - x/ARENA_X_SPAN)*h;
+    return [px, py];
+  }
+
+  function drawArena(){
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.strokeStyle = 'rgba(78,230,184,0.08)';
+    ctx.lineWidth = 1;
+    for(let gy=0; gy<=ARENA_Y_SPAN; gy+=80){
+      const [x1,y1] = toPx(0,gy), [x2,y2] = toPx(ARENA_X_SPAN,gy);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+    for(let gx=0; gx<=ARENA_X_SPAN; gx+=80){
+      const [x1,y1] = toPx(gx,0), [x2,y2] = toPx(gx,ARENA_Y_SPAN);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+
+    if(trail.length > 1){
+      ctx.strokeStyle = '#4ee6b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      trail.forEach(([x,y], i) => {
+        const [px,py] = toPx(x,y);
+        i === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+      });
+      ctx.stroke();
+    }
+
+    if(target){
+      const [tx,ty] = toPx(target.x, target.y);
+      ctx.fillStyle = '#ff5d5d';
+      ctx.beginPath(); ctx.arc(tx,ty,6,0,Math.PI*2); ctx.fill();
+    }
+
+    if(trail.length){
+      const [lx,ly] = trail[trail.length-1];
+      const [px,py] = toPx(lx,ly);
+      ctx.fillStyle = '#ffb454';
+      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#0d151b'; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+
+  // BUG SEBELUMNYA: orderBy('_received_at','asc') + limit(300) selalu
+  // mengambil 300 dokumen TERLAMA (dari awal robot bergerak), bukan yang
+  // terbaru. Akibatnya titik oranye (posisi leader terakhir) macet di
+  // posisi lama dan tidak pernah mengikuti pergerakan robot yang sebenarnya.
+  // Perbaikan: ambil 300 TERBARU (orderBy desc + limit), lalu balik urutannya
+  // supaya tetap lama->baru untuk keperluan menggambar garis jejak.
+  const historyQuery = query(
+    collection(db, COLLECTION, 'aruco_leader_pose', 'history'),
+    orderBy('_received_at', 'desc'),
+    limit(300)
+  );
+  onSnapshot(historyQuery, (snap) => {
+    trail = snap.docs.map(d => [d.data().x, d.data().y]).reverse();
+    document.getElementById('arena-count').textContent = `${trail.length} titik`;
+    drawArena();
+  });
+
+  resizeCanvas();
+
+  const logEl = document.getElementById('cmd-log');
+  window.sendCommand = async function(action){
+    try {
+      await addDoc(collection(db, COLLECTION, 'commands', 'inbox'), {
+        action, issued_at: serverTimestamp()
+      });
+      const entry = document.createElement('div');
+      entry.innerHTML = `<span>[${new Date().toLocaleTimeString('id-ID')}]</span> "${action}" terkirim`;
+      logEl.prepend(entry);
+    } catch(e) {
+      const entry = document.createElement('div');
+      entry.style.color = '#ff5d5d';
+      entry.textContent = `Gagal kirim "${action}": ${e.message}`;
+      logEl.prepend(entry);
+    }
+  };
+
+  function celebrate(){
+    const overlay = document.getElementById('celebration');
+    overlay.classList.add('show');
+    const colors = ['#4ee6b8','#ffb454','#ff5d5d','#5eead4','#ffffff'];
+    for(let i=0;i<60;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.animationDuration = (2 + Math.random()*2) + 's';
+      p.style.animationDelay = (Math.random()*0.5) + 's';
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 4500);
+    }
+    setTimeout(() => overlay.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>
