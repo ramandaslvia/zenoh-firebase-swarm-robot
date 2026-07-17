@@ -25,7 +25,8 @@ terhubung real-time lewat Firebase Firestore.
      attachments/assets/....) menggantikan posisi tadi.
   5. Scroll ke bawah, klik "Commit changes".
 -->
-GANTI BARIS INI DENGAN VIDEO (drag & drop file video ke sini saat mengedit README di GitHub)
+[demo_simulasi.webm](https://github.com/user-attachments/assets/73114f3f-b063-4bef-b085-e219feb73d70)
+
 
 
 ```
