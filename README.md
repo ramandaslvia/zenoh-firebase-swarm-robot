@@ -7,6 +7,27 @@ terhubung real-time lewat Firebase Firestore.
 
 ## 1. Ringkasan Arsitektur
 
+![Blok Diagram Sistem Terintegrasi](docs/blok_diagram_sistem_terintegrasi.png)
+
+### 🎥 Video Demo Simulasi
+
+<!-- 
+  CARA MENEMPEL VIDEO DI SINI (supaya video ikut terputar langsung
+  di halaman README, bukan cuma jadi link biasa):
+  1. Buka repo ini di github.com, klik file README.md, klik ikon
+     pensil (Edit this file).
+  2. Cari baris tulisan "GANTI BARIS INI..." tepat di bawah komentar ini.
+  3. Hapus baris itu, lalu drag & drop file video Anda (docs/videos/
+     demo_simulasi.webm) langsung ke kotak editor, PERSIS di posisi
+     baris yang tadi dihapus.
+  4. Tunggu sampai GitHub selesai meng-upload (progress bar), akan
+     muncul otomatis satu baris link (https://github.com/user-
+     attachments/assets/....) menggantikan posisi tadi.
+  5. Scroll ke bawah, klik "Commit changes".
+-->
+GANTI BARIS INI DENGAN VIDEO (drag & drop file video ke sini saat mengedit README di GitHub)
+
+
 ```
 ┌─────────────────┐   ArUco (kamera overhead)   ┌──────────────────┐
 │  Gazebo (robot   │ ───────────────────────────▶│  aruco_detector   │
