@@ -7,7 +7,7 @@ terhubung real-time lewat Firebase Firestore.
 
 ## 1. Ringkasan Arsitektur
 
-![Blok Diagram Sistem Terintegrasi](docs/blok_diagram_sistem_terintegrasi.png)
+![Blok Diagram Sistem Terintegrasi](../docs/blok_diagram_sistem_terintegrasi.png)
 
 ### 🎥 Video Demo Simulasi
 

@@ -4,8 +4,6 @@ Sistem simulasi robot beroda (leader) yang dipandu kamera overhead (deteksi
 ArUco marker) untuk bergerak otomatis menuju titik target, dapat dipantau
 dan dikendalikan (otomatis maupun manual) dari dashboard web.
 
-![Blok Diagram Sistem Terintegrasi](docs/blok_diagram_sistem_terintegrasi.png)
-
 Repository ini berisi **dua versi arsitektur komunikasi** yang bisa dipilih.
 Logika robot (deteksi ArUco, navigasi otomatis ke target) **sama persis** di
 kedua versi — yang berbeda hanya cara robot terhubung ke dashboard web.
