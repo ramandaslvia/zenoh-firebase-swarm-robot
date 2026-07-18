@@ -21,7 +21,10 @@ systemd service.
 ### 🎥 Video Demo Simulasi (V2)
 
 
-https://github.com/user-attachments/assets/6b8c5954-eec2-4e7b-8976-9f87ff221cd4
+
+
+https://github.com/user-attachments/assets/cc65a92e-6b8d-4d60-a851-e60bbc81aa9f
+
 
 
 <!-- 
