@@ -20,6 +20,13 @@ systemd service.
 
 ### 🎥 Video Demo Simulasi (V2)
 
+
+
+
+https://github.com/user-attachments/assets/cc65a92e-6b8d-4d60-a851-e60bbc81aa9f
+
+
+
 <!-- 
   CARA MENEMPEL VIDEO DI SINI (supaya video ikut terputar langsung
   di halaman README, bukan cuma jadi link biasa):
@@ -34,7 +41,7 @@ systemd service.
      attachments/assets/....) menggantikan posisi tadi.
   5. Scroll ke bawah, klik "Commit changes".
 -->
-GANTI BARIS INI dengan video Anda (lihat instruksi di komentar di atas)
+
 
 ## Perbandingan Singkat V1 vs V2
 
