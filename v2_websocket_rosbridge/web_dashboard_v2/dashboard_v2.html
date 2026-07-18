@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>SWARM_ROBOT V2 — Ground Control (WebSocket/rosbridge)</title>
+<script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0f14; --panel:#101820; --border:#1c2833; --text:#dfe8ef;
+    --accent:#39e0b0; --accent2:#ffb454; --danger:#ff5d5d; --muted:#7d93a3;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text); font-family:'Segoe UI',monospace; margin:0; padding:24px;}
+  h1{font-size:20px; letter-spacing:2px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:20px;}
+  .grid{display:grid; grid-template-columns:1.2fr 1fr; gap:16px;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px;}
+  .panel h2{font-size:13px; letter-spacing:1px; color:var(--muted); margin:0 0 12px; text-transform:uppercase;}
+  .row{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:14px;}
+  .row:last-child{border-bottom:none;}
+  .val{color:var(--accent); font-weight:bold;}
+  #status-badge{padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; text-align:center;}
+  .ok{background:rgba(57,224,176,0.15); color:var(--accent); border:1px solid var(--accent);}
+  .bad{background:rgba(255,93,93,0.15); color:var(--danger); border:1px solid var(--danger);}
+  button{font-family:inherit; font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border);
+    background:#16212c; color:var(--text); cursor:pointer; width:100%; margin-bottom:8px;}
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent); color:#04231b; font-weight:bold; border:none;}
+  button.danger{background:var(--danger); color:#2b0000; font-weight:bold; border:none;}
+  .dpad{display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; max-width:220px; margin:8px auto;}
+  input[type=text]{width:100%; padding:8px; background:#0d1420; border:1px solid var(--border); color:var(--text); border-radius:6px; font-family:inherit;}
+  img#video{width:100%; border-radius:6px; background:#000; display:block;}
+  .conn-row{display:flex; gap:8px; margin-bottom:12px;}
+  .conn-row input{flex:1;}
+  .conn-row button{width:auto; padding:8px 16px;}
+  .log{height:120px; overflow-y:auto; font-size:12px; color:var(--muted); background:#0d1420; border-radius:6px; padding:8px;}
+</style>
+</head>
+<body>
+
+  <h1>SWARM_ROBOT V2 // GROUND CONTROL <span style="color:var(--muted); font-size:13px;">(WebSocket / rosbridge — tanpa Firebase)</span></h1>
+  <div class="sub">Komunikasi langsung ke robot lewat rosbridge_websocket, di-tunnel lewat VPS yang sama dengan V1.</div>
+
+  <div class="panel">
+    <h2>Koneksi</h2>
+    <div class="conn-row">
+      <input type="text" id="vpsIp" placeholder="IP publik VPS, contoh: 13.214.188.57">
+      <button class="primary" onclick="connect()">Sambungkan</button>
+    </div>
+    <span id="status-badge" class="bad">TERPUTUS</span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h2>Kamera Overhead (Live Streaming)</h2>
+        <img id="video" src="" alt="Video belum tersambung">
+      </div>
+      <div class="panel">
+        <h2>Log</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Telemetri</h2>
+        <div class="row"><span>Leader (x, y)</span><span class="val" id="leaderXY">-, - cm</span></div>
+        <div class="row"><span>Theta</span><span class="val" id="leaderTheta">-</span></div>
+        <div class="row"><span>Target (x, y)</span><span class="val" id="targetXY">-, - cm</span></div>
+        <div class="row"><span>Status Misi</span><span class="val" id="missionStatus">-</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>Kontrol Otomatis</h2>
+        <button class="primary" onclick="sendStart(true)">▶ START</button>
+        <button class="danger" onclick="sendStart(false)">■ STOP</button>
+      </div>
+
+      <div class="panel">
+        <h2>Kontrol Manual</h2>
+        <div class="dpad">
+          <span></span>
+          <button onclick="moveOnce(0.15,0)">▲</button>
+          <span></span>
+          <button onclick="moveOnce(0,0.8)">◀</button>
+          <button onclick="moveOnce(0,0)">■</button>
+          <button onclick="moveOnce(0,-0.8)">▶</button>
+          <span></span>
+          <button onclick="moveOnce(-0.15,0)">▼</button>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let ros, cmdVelTopic, missionStartTopic;
+
+function log(msg){
+  const el = document.getElementById('log');
+  const time = new Date().toLocaleTimeString();
+  el.innerHTML = `[${time}] ${msg}<br>` + el.innerHTML;
+}
+
+function setBadge(ok){
+  const b = document.getElementById('status-badge');
+  b.className = ok ? 'ok' : 'bad';
+  b.textContent = ok ? 'TERSAMBUNG' : 'TERPUTUS';
+}
+
+function connect(){
+  const ip = document.getElementById('vpsIp').value.trim();
+  if(!ip){ alert('Isi dulu IP publik VPS-nya.'); return; }
+  localStorage.setItem('swarm_v2_vps_ip', ip);
+
+  if(ros) ros.close();
+  ros = new ROSLIB.Ros({ url: `ws://${ip}:9090` });
+
+  ros.on('connection', () => { setBadge(true); log('Berhasil tersambung ke rosbridge.'); });
+  ros.on('error', (e) => { setBadge(false); log('Galat koneksi: ' + e); });
+  ros.on('close', () => { setBadge(false); log('Koneksi terputus.'); });
+
+  // Video overhead camera lewat web_video_server (di-tunnel lewat port 8080 VPS)
+  document.getElementById('video').src =
+    `http://${ip}:8080/stream?topic=/overhead_camera/compressed&type=mjpeg`;
+
+  // --- Subscriber telemetri (langsung baca topic ROS2, tanpa Firestore) ---
+  new ROSLIB.Topic({ ros, name: '/aruco/leader_pose', messageType: 'geometry_msgs/Pose2D' })
+    .subscribe((m) => {
+      document.getElementById('leaderXY').textContent = `${m.x.toFixed(1)}, ${m.y.toFixed(1)} cm`;
+      document.getElementById('leaderTheta').textContent = (m.theta*180/Math.PI).toFixed(1) + '°';
+    });
+
+  new ROSLIB.Topic({ ros, name: '/aruco/target_pose', messageType: 'geometry_msgs/Pose2D' })
+    .subscribe((m) => {
+      document.getElementById('targetXY').textContent = `${m.x.toFixed(1)}, ${m.y.toFixed(1)} cm`;
+    });
+
+  new ROSLIB.Topic({ ros, name: '/mission/status', messageType: 'std_msgs/String' })
+    .subscribe((m) => {
+      document.getElementById('missionStatus').textContent = m.data;
+    });
+
+  // --- Publisher untuk kontrol (langsung ke topic ROS2 robot) ---
+  cmdVelTopic = new ROSLIB.Topic({ ros, name: '/cmd_vel', messageType: 'geometry_msgs/Twist' });
+  missionStartTopic = new ROSLIB.Topic({ ros, name: '/mission/start', messageType: 'std_msgs/Bool' });
+}
+
+function sendStart(val){
+  if(!ros || !ros.isConnected){ alert('Belum tersambung.'); return; }
+  missionStartTopic.publish(new ROSLIB.Message({ data: val }));
+  log(val ? 'Perintah START dikirim.' : 'Perintah STOP dikirim.');
+}
+
+function moveOnce(v, w){
+  if(!ros || !ros.isConnected){ alert('Belum tersambung.'); return; }
+  const twist = new ROSLIB.Message({
+    linear: { x: v, y: 0, z: 0 },
+    angular: { x: 0, y: 0, z: w },
+  });
+  cmdVelTopic.publish(twist);
+}
+
+// Auto-isi IP terakhir yang dipakai
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('swarm_v2_vps_ip');
+  if(saved) document.getElementById('vpsIp').value = saved;
+});
+</script>
+</body>
+</html>
