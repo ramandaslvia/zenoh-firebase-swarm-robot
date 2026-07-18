@@ -34,6 +34,35 @@
   .conn-row input{flex:1;}
   .conn-row button{width:auto; padding:8px 16px;}
   .log{height:120px; overflow-y:auto; font-size:12px; color:var(--muted); background:#0d1420; border-radius:6px; padding:8px;}
+
+  /* Badge status misi berwarna sesuai fase */
+  #mission-badge{display:inline-block; padding:4px 12px; border-radius:14px; font-weight:bold; font-size:13px;}
+  #mission-badge.putar{background:rgba(255,180,84,0.18); color:var(--accent2); border:1px solid var(--accent2);}
+  #mission-badge.maju{background:rgba(90,170,255,0.18); color:#5aaaff; border:1px solid #5aaaff;}
+  #mission-badge.tercapai{background:rgba(57,224,176,0.2); color:var(--accent); border:1px solid var(--accent); animation:pulseGlow 1s ease-in-out infinite;}
+  #mission-badge.idle{background:rgba(125,147,163,0.15); color:var(--muted); border:1px solid var(--border);}
+
+  @keyframes pulseGlow{
+    0%,100%{ box-shadow:0 0 0 0 rgba(57,224,176,0.5); }
+    50%{ box-shadow:0 0 14px 4px rgba(57,224,176,0.5); }
+  }
+
+  /* Banner besar perayaan saat target tercapai */
+  #celebrate-banner{
+    display:none; margin-bottom:16px; padding:18px; border-radius:10px; text-align:center;
+    background:linear-gradient(135deg, rgba(57,224,176,0.18), rgba(57,224,176,0.05));
+    border:1px solid var(--accent); font-size:18px; font-weight:bold; color:var(--accent);
+    animation:bannerPop 0.4s ease-out, bannerGlow 1.4s ease-in-out infinite 0.4s;
+  }
+  #celebrate-banner.show{display:block;}
+  @keyframes bannerPop{
+    0%{ transform:scale(0.9); opacity:0; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  @keyframes bannerGlow{
+    0%,100%{ box-shadow:0 0 0 0 rgba(57,224,176,0.35); }
+    50%{ box-shadow:0 0 24px 6px rgba(57,224,176,0.35); }
+  }
 </style>
 </head>
 <body>
@@ -49,6 +78,8 @@
     </div>
     <span id="status-badge" class="bad">TERPUTUS</span>
   </div>
+
+  <div id="celebrate-banner">🎉 TARGET TERCAPAI! Robot berhasil sampai ke tujuan. 🎉</div>
 
   <div class="grid">
     <div>
@@ -68,7 +99,7 @@
         <div class="row"><span>Leader (x, y)</span><span class="val" id="leaderXY">-, - cm</span></div>
         <div class="row"><span>Theta</span><span class="val" id="leaderTheta">-</span></div>
         <div class="row"><span>Target (x, y)</span><span class="val" id="targetXY">-, - cm</span></div>
-        <div class="row"><span>Status Misi</span><span class="val" id="missionStatus">-</span></div>
+        <div class="row"><span>Status Misi</span><span id="mission-badge" class="idle"><span id="missionStatus">-</span></span></div>
       </div>
 
       <div class="panel">
@@ -96,6 +127,114 @@
 
 <script>
 let ros, cmdVelTopic, missionStartTopic;
+let videoRetryTimeout = null;
+let videoIp = null;
+let videoStopped = false;
+
+// Posisi terakhir leader & target, dipakai untuk menghitung jarak sendiri di
+// browser (client-side) — supaya notifikasi "Target Tercapai" tetap bisa
+// muncul walau robot digerakkan manual (bukan hanya mode otomatis).
+let lastLeader = null;   // {x, y}
+let lastTarget = null;   // {x, y}
+const TARGET_RADIUS_CM = 15; // ambang batas "sampai target", selaras dgn target_follower.cpp
+let alreadyCelebrated = false;
+
+// Bunyi "ding" pendek pakai Web Audio API bawaan browser — tidak perlu file
+// suara terpisah, jadi tidak ada dependency/asset tambahan yang bisa gagal load.
+function playChime(){
+  try{
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const notes = [880, 1108, 1318]; // nada naik pendek, terasa "berhasil"
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.2, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.3);
+    });
+  }catch(e){ /* browser tidak dukung audio, abaikan diam-diam */ }
+}
+
+function showCelebration(){
+  if(alreadyCelebrated) return; // jangan berulang-ulang tiap frame pose masuk
+  alreadyCelebrated = true;
+  document.getElementById('celebrate-banner').classList.add('show');
+  playChime();
+  log('🎉 Target tercapai! (jarak di bawah ' + TARGET_RADIUS_CM + 'cm)');
+}
+
+function hideCelebration(){
+  alreadyCelebrated = false;
+  document.getElementById('celebrate-banner').classList.remove('show');
+}
+
+// Dipanggil setiap ada update posisi leader ATAU target, dari mode manual
+// maupun otomatis — murni menghitung jarak Euclidean di browser.
+function checkDistanceToTarget(){
+  if(!lastLeader || !lastTarget) return;
+  const dx = lastLeader.x - lastTarget.x;
+  const dy = lastLeader.y - lastTarget.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if(dist <= TARGET_RADIUS_CM){
+    showCelebration();
+  } else if(dist > TARGET_RADIUS_CM * 1.5){
+    // beri sedikit jarak (hysteresis) supaya banner tidak kedip-kedip
+    // kalau posisi robot pas di garis batas radius.
+    hideCelebration();
+  }
+}
+
+function setMissionBadge(status){
+  const badge = document.getElementById('mission-badge');
+  document.getElementById('missionStatus').textContent = status;
+  badge.classList.remove('putar','maju','tercapai','idle');
+  if(status === 'SEDANG_PUTAR') badge.classList.add('putar');
+  else if(status === 'SEDANG_MAJU') badge.classList.add('maju');
+  else if(status === 'TARGET_TERCAPAI'){ badge.classList.add('tercapai'); showCelebration(); }
+  else badge.classList.add('idle');
+}
+
+// Stream MJPEG lewat <img>. Karena web_video_server/tunnel SSH kadang belum
+// 100% siap tepat saat tombol "Sambungkan" diklik, percobaan pertama bisa
+// gagal — dan <img> TIDAK otomatis retry kalau gagal load sekali. Fungsi ini
+// menambah retry otomatis (hanya saat gagal) tiap 3 detik sampai stream
+// berhasil tampil. Begitu berhasil, retry berhenti; stream MJPEG memang
+// koneksinya menyala terus (multipart), bukan "selesai load" seperti gambar
+// biasa, jadi kita TIDAK boleh reset src secara berkala walau sudah sukses.
+function startVideoStream(ip){
+  videoIp = ip;
+  videoStopped = false;
+  if(videoRetryTimeout){ clearTimeout(videoRetryTimeout); videoRetryTimeout = null; }
+
+  const img = document.getElementById('video');
+
+  img.onload = () => {
+    if(videoRetryTimeout){ clearTimeout(videoRetryTimeout); videoRetryTimeout = null; }
+    log('Video overhead tersambung.');
+  };
+
+  img.onerror = () => {
+    if(videoStopped) return;
+    log('Video gagal dimuat, mencoba lagi dalam 3 detik...');
+    videoRetryTimeout = setTimeout(tryLoad, 3000);
+  };
+
+  function tryLoad(){
+    if(videoStopped) return;
+    // Cache-buster (&_=timestamp) supaya browser tidak diam-diam memakai
+    // request gagal sebelumnya dan benar-benar mencoba koneksi baru.
+    img.src = `http://${videoIp}:8080/stream?topic=/overhead_camera/image_raw&type=mjpeg&_=${Date.now()}`;
+  }
+
+  tryLoad();
+}
 
 function log(msg){
   const el = document.getElementById('log');
@@ -114,32 +253,46 @@ function connect(){
   if(!ip){ alert('Isi dulu IP publik VPS-nya.'); return; }
   localStorage.setItem('swarm_v2_vps_ip', ip);
 
+  hideCelebration();
+  lastLeader = null; lastTarget = null;
+
   if(ros) ros.close();
   ros = new ROSLIB.Ros({ url: `ws://${ip}:9090` });
 
   ros.on('connection', () => { setBadge(true); log('Berhasil tersambung ke rosbridge.'); });
   ros.on('error', (e) => { setBadge(false); log('Galat koneksi: ' + e); });
-  ros.on('close', () => { setBadge(false); log('Koneksi terputus.'); });
+  ros.on('close', () => {
+    setBadge(false);
+    log('Koneksi terputus.');
+    videoStopped = true;
+    if(videoRetryTimeout){ clearTimeout(videoRetryTimeout); videoRetryTimeout = null; }
+  });
 
   // Video overhead camera lewat web_video_server (di-tunnel lewat port 8080 VPS)
-  document.getElementById('video').src =
-    `http://${ip}:8080/stream?topic=/overhead_camera/compressed&type=mjpeg`;
+  // Catatan: pakai topic /overhead_camera/image_raw (topic sensor ROS2 asli),
+  // BUKAN /overhead_camera/compressed (itu topic khusus V1, hanya ada kalau
+  // camera_uploader.py dijalankan, yang tidak dipakai di alur V2).
+  startVideoStream(ip);
 
   // --- Subscriber telemetri (langsung baca topic ROS2, tanpa Firestore) ---
   new ROSLIB.Topic({ ros, name: '/aruco/leader_pose', messageType: 'geometry_msgs/Pose2D' })
     .subscribe((m) => {
       document.getElementById('leaderXY').textContent = `${m.x.toFixed(1)}, ${m.y.toFixed(1)} cm`;
       document.getElementById('leaderTheta').textContent = (m.theta*180/Math.PI).toFixed(1) + '°';
+      lastLeader = { x: m.x, y: m.y };
+      checkDistanceToTarget();
     });
 
   new ROSLIB.Topic({ ros, name: '/aruco/target_pose', messageType: 'geometry_msgs/Pose2D' })
     .subscribe((m) => {
       document.getElementById('targetXY').textContent = `${m.x.toFixed(1)}, ${m.y.toFixed(1)} cm`;
+      lastTarget = { x: m.x, y: m.y };
+      checkDistanceToTarget();
     });
 
   new ROSLIB.Topic({ ros, name: '/mission/status', messageType: 'std_msgs/String' })
     .subscribe((m) => {
-      document.getElementById('missionStatus').textContent = m.data;
+      setMissionBadge(m.data);
     });
 
   // --- Publisher untuk kontrol (langsung ke topic ROS2 robot) ---
@@ -149,6 +302,7 @@ function connect(){
 
 function sendStart(val){
   if(!ros || !ros.isConnected){ alert('Belum tersambung.'); return; }
+  if(val) hideCelebration(); // misi baru dimulai, sembunyikan notifikasi lama
   missionStartTopic.publish(new ROSLIB.Message({ data: val }));
   log(val ? 'Perintah START dikirim.' : 'Perintah STOP dikirim.');
 }

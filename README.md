@@ -74,5 +74,7 @@ tambahan.
 
 ## 📄 Dokumentasi Lengkap
 
-- [Laporan Praktikum](Laporan_Praktikum_Swarm_Robot.docx)
-- [Panduan Simulasi V1](Panduan_Simulasi_Swarm_Robot.docx)
+- [Laporan Praktikum V1](Laporan_Praktikum_Swarm_Robot_V1.docx)
+- [Laporan Praktikum V2](Laporan_Praktikum_Swarm_Robot_V2.docx)
+- [Panduan Simulasi V1](Panduan_Simulasi_Swarm_Robot_V1.docx)
+- [Panduan Simulasi V2](Panduan_Simulasi_Swarm_Robot_V2.docx)
