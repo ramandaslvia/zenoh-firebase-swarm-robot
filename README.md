@@ -43,34 +43,19 @@ tambahan.
 
 ## 🎥 Video Demo Simulasi
 
-### Versi 1 (Zenoh + Firebase)
+### 📹 Versi 1 (Zenoh + Firebase)
 
-📹 [Tonton/unduh video demo V1](docs/videos/demo_simulasi.webm)
 
-<!--
-  CARA MENEMPEL VIDEO INI SUPAYA TERPUTAR LANGSUNG di halaman README
-  (bukan cuma link biasa seperti di atas):
-  1. Buka repo ini di github.com, klik file README.md, klik ikon pensil
-     (Edit this file).
-  2. Hapus baris link "📹 Tonton/unduh..." di atas.
-  3. Drag & drop file docs/videos/demo_simulasi.webm (dari komputer Anda)
-     ke posisi ini, tunggu upload selesai.
-  4. Commit changes.
--->
+[demo_simulasi.webm](https://github.com/user-attachments/assets/cd07376b-61e4-406e-8759-c9278c73ec6a)
 
-### Versi 2 (WebSocket / rosbridge)
 
-📹 [Tonton/unduh video demo V2](docs/videos/demo_simulasi_v2.webm)
+### 📹 Versi 2 (WebSocket / rosbridge)
 
-<!--
-  CARA MENEMPEL VIDEO INI SUPAYA TERPUTAR LANGSUNG di halaman README:
-  1. Buka repo ini di github.com, klik file README.md, klik ikon pensil
-     (Edit this file).
-  2. Hapus baris link "📹 Tonton/unduh..." di atas.
-  3. Drag & drop file docs/videos/demo_simulasi_v2.webm (dari komputer Anda)
-     ke posisi ini, tunggu upload selesai.
-  4. Commit changes.
--->
+
+
+
+https://github.com/user-attachments/assets/3d106267-5850-4a7c-9ba5-1268452b5051
+
 
 ## 📄 Dokumentasi Lengkap
 
