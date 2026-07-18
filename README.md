@@ -47,6 +47,8 @@ tambahan.
 
 📹 [Tonton/unduh video demo V1](docs/videos/demo_simulasi.webm)
 
+[demo_simulasi.webm](https://github.com/user-attachments/assets/d916452a-bd7c-4885-9cea-c9c9c5797b34)
+
 <!--
   CARA MENEMPEL VIDEO INI SUPAYA TERPUTAR LANGSUNG di halaman README
   (bukan cuma link biasa seperti di atas):
@@ -61,6 +63,11 @@ tambahan.
 ### Versi 2 (WebSocket / rosbridge)
 
 📹 [Tonton/unduh video demo V2](docs/videos/demo_simulasi_v2.webm)
+
+
+
+
+https://github.com/user-attachments/assets/f998c911-c0b7-4259-88b0-64dbff430b4d
 
 <!--
   CARA MENEMPEL VIDEO INI SUPAYA TERPUTAR LANGSUNG di halaman README:
