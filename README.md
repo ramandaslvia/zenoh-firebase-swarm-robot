@@ -43,9 +43,7 @@ tambahan.
 
 ## 🎥 Video Demo Simulasi
 
-### Versi 1 (Zenoh + Firebase)
-
-📹 [Tonton/unduh video demo V1](docs/videos/demo_simulasi.webm)
+### 📹 Versi 1 (Zenoh + Firebase)
 
 [demo_simulasi.webm](https://github.com/user-attachments/assets/d916452a-bd7c-4885-9cea-c9c9c5797b34)
 
@@ -60,12 +58,7 @@ tambahan.
   4. Commit changes.
 -->
 
-### Versi 2 (WebSocket / rosbridge)
-
-📹 [Tonton/unduh video demo V2](docs/videos/demo_simulasi_v2.webm)
-
-
-
+### 📹 Versi 2 (WebSocket / rosbridge)
 
 https://github.com/user-attachments/assets/f998c911-c0b7-4259-88b0-64dbff430b4d
 
